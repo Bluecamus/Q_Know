@@ -26,6 +26,27 @@ body {
   animation-fill-mode: forwards;
 }
 
+/* 底部输入区：移动端额外留出底部空间，避免被右下角悬浮徽章遮挡 */
+.chat-composer {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 640px) {
+  .chat-composer {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* 尝试隐藏托管平台注入的 "Powered by Netlify" 悬浮徽章 */
+#netlify-badge,
+.netlify-badge,
+[data-netlify-badge],
+a[href*="netlify.com"][target="_blank"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .markdown-bubble > *:first-child {
   margin-top: 0;
 }

@@ -366,7 +366,7 @@ export default function HomePage() {
 
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-0 mx-auto flex w-full max-w-2xl gap-3 bg-blue-50 px-4 py-4"
+        className="chat-composer sticky bottom-0 mx-auto flex w-full max-w-2xl gap-3 bg-blue-50 px-4 pt-4"
       >
         <input
           value={input}
