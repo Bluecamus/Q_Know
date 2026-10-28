@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body {
+  height: 100%;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--drift), 110vh, 0) rotate(720deg);
+    opacity: 0.9;
+  }
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+.markdown-bubble > *:first-child {
+  margin-top: 0;
+}
+
+.markdown-bubble > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-bubble h1,
+.markdown-bubble h2,
+.markdown-bubble h3,
+.markdown-bubble h4 {
+  color: #0284c7;
+  font-weight: 800;
+  line-height: 1.35;
+  margin: 0.55em 0 0.3em;
+}
+
+.markdown-bubble h1 {
+  font-size: 1.45rem;
+}
+
+.markdown-bubble h2 {
+  font-size: 1.28rem;
+}
+
+.markdown-bubble h3,
+.markdown-bubble h4 {
+  font-size: 1.12rem;
+}
+
+.markdown-bubble p {
+  margin: 0.4em 0;
+}
+
+.markdown-bubble strong {
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.markdown-bubble em {
+  font-style: italic;
+}
+
+.markdown-bubble ul,
+.markdown-bubble ol {
+  margin: 0.4em 0;
+  padding-left: 1.3em;
+}
+
+.markdown-bubble li {
+  margin: 0.15em 0;
+}
+
+.markdown-bubble a {
+  color: #0284c7;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.markdown-bubble code {
+  border-radius: 0.4em;
+  background: #e0f2fe;
+  padding: 0.08em 0.4em;
+  font-size: 0.9em;
+}
+
+.markdown-bubble pre {
+  overflow-x: auto;
+  border-radius: 1rem;
+  background: #f1f5f9;
+  margin: 0.5em 0;
+  padding: 0.75em 1em;
+  font-size: 0.9em;
+}
+
+.markdown-bubble pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.markdown-bubble blockquote {
+  margin: 0.5em 0;
+  border-left: 4px solid #7dd3fc;
+  padding-left: 0.8em;
+  color: #475569;
+}
