@@ -101,6 +101,7 @@ export default function HomePage() {
   const [showConfetti, setShowConfetti] = useState(false);
 
   const listRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const audioUnlockedRef = useRef(false);
   const victoryPlayedRef = useRef(false);
@@ -127,6 +128,15 @@ export default function HomePage() {
       behavior: "smooth",
     });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const maxHeight = 120;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
+  }, [input]);
 
   function unlockAudio() {
     const audio = audioRef.current;
@@ -366,19 +376,21 @@ export default function HomePage() {
 
       <form
         onSubmit={handleSubmit}
-        className="chat-composer sticky bottom-0 mx-auto flex w-full max-w-2xl gap-3 bg-blue-50 px-4 pt-4"
+        className="chat-composer sticky bottom-0 mx-auto flex w-full max-w-2xl items-end gap-3 bg-blue-50 px-4 pt-4"
       >
-        <input
+        <textarea
+          ref={textareaRef}
           value={input}
           onChange={(event) => setInput(event.target.value)}
           placeholder="输入你想说的话..."
+          rows={1}
           disabled={isSending}
-          className="h-14 flex-1 rounded-full border-2 border-sky-200 bg-white px-6 text-xl text-slate-700 outline-none ring-sky-300 placeholder:text-slate-400 focus:ring-4 disabled:opacity-60"
+          className="max-h-[120px] min-h-14 flex-1 resize-none overflow-y-auto rounded-3xl border-2 border-sky-200 bg-white px-6 py-3 text-xl leading-8 text-slate-700 outline-none ring-sky-300 placeholder:text-slate-400 focus:ring-4 disabled:opacity-60"
         />
         <button
           type="submit"
           disabled={isSending || !input.trim()}
-          className="h-14 rounded-full bg-sky-500 px-7 text-xl font-extrabold text-white shadow-md transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-sky-300"
+          className="h-14 shrink-0 whitespace-nowrap rounded-full bg-sky-500 px-7 text-xl font-extrabold text-white shadow-md transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:bg-sky-300"
         >
           发送
         </button>
