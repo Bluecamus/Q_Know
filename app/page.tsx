@@ -56,6 +56,16 @@ function mergeStreamText(
   return previous + incoming;
 }
 
+/** 剥离大模型的思考标签（<think> /  thinking），兼容流式未闭合的情况 */
+function stripThinkTags(text: string) {
+  if (!text) return "";
+
+  return text
+    .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, "")
+    .replace(/<think(?:ing)?>[\s\S]*$/gi, "")
+    .trim();
+}
+
 function parseDifyAnswerChunk(
   line: string
 ): { text: string; replace: boolean; conversationId?: string } | null {
@@ -318,10 +328,11 @@ export default function HomePage() {
           if (!chunk.text) continue;
 
           fullText = mergeStreamText(fullText, chunk.text, chunk.replace);
+          const cleanText = stripThinkTags(fullText);
           setMessages((prev) =>
             prev.map((message) =>
               message.id === assistantId
-                ? { ...message, content: fullText }
+                ? { ...message, content: cleanText }
                 : message
             )
           );
@@ -340,10 +351,11 @@ export default function HomePage() {
 
         if (lastChunk.text) {
           fullText = mergeStreamText(fullText, lastChunk.text, lastChunk.replace);
+          const cleanText = stripThinkTags(fullText);
           setMessages((prev) =>
             prev.map((message) =>
               message.id === assistantId
-                ? { ...message, content: fullText }
+                ? { ...message, content: cleanText }
                 : message
             )
           );
