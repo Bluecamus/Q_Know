@@ -12,7 +12,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { query?: string; conversation_id?: string };
+  let body: {
+    query?: string;
+    conversationId?: string;
+    conversation_id?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -24,6 +28,10 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "缺少 query" }, { status: 400 });
   }
 
+  const conversationId =
+    (typeof body.conversationId === "string" ? body.conversationId.trim() : "") ||
+    (typeof body.conversation_id === "string" ? body.conversation_id.trim() : "");
+
   const difyResponse = await fetch(DIFY_CHAT_URL, {
     method: "POST",
     headers: {
@@ -34,7 +42,7 @@ export async function POST(request: NextRequest) {
       inputs: {},
       query,
       response_mode: "streaming",
-      conversation_id: body.conversation_id || "",
+      conversation_id: conversationId || "",
       user: "child-mvp-user",
     }),
   });

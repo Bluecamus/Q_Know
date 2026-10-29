@@ -19,6 +19,10 @@ type ChatMessage = {
   content: string;
 };
 
+const CONVERSATION_STORAGE_KEY = "dify_conversation_id";
+
+const WELCOME_MESSAGE = "嗨！我是你的小伙伴。\n\n想聊什么，**直接告诉我**吧～";
+
 const CONFETTI_COLORS = [
   "#f43f5e",
   "#f97316",
@@ -54,7 +58,7 @@ function mergeStreamText(
 
 function parseDifyAnswerChunk(
   line: string
-): { text: string; replace: boolean } | null {
+): { text: string; replace: boolean; conversationId?: string } | null {
   const trimmed = line.trim();
   if (!trimmed.startsWith("data:")) return null;
 
@@ -65,21 +69,34 @@ function parseDifyAnswerChunk(
     const data = JSON.parse(payload) as {
       event?: string;
       answer?: string;
-      data?: { text?: string; answer?: string };
+      conversation_id?: string;
+      data?: { text?: string; answer?: string; conversation_id?: string };
     };
 
-    if (data.event === "ping" || data.event === "error") return null;
+    const conversationId = data.conversation_id || data.data?.conversation_id;
+
+    if (data.event === "ping" || data.event === "error") {
+      return conversationId
+        ? { text: "", replace: false, conversationId }
+        : null;
+    }
 
     if (typeof data.answer === "string" && data.answer) {
       return {
         text: data.answer,
         replace: data.event === "message_replace",
+        conversationId,
       };
     }
 
     const nestedText = data.data?.text || data.data?.answer;
     if (typeof nestedText === "string" && nestedText) {
-      return { text: nestedText, replace: false };
+      return { text: nestedText, replace: false, conversationId };
+    }
+
+    // message_end 等不含正文的事件，只用于同步会话 ID
+    if (conversationId) {
+      return { text: "", replace: false, conversationId };
     }
   } catch {
     return null;
@@ -93,15 +110,17 @@ export default function HomePage() {
     {
       id: "welcome",
       role: "assistant",
-      content: "嗨！我是你的小伙伴。\n\n想聊什么，**直接告诉我**吧～",
+      content: WELCOME_MESSAGE,
     },
   ]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [conversationId, setConversationId] = useState("");
 
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const conversationIdRef = useRef("");
   const audioRef = useRef<HTMLAudioElement>(null);
   const audioUnlockedRef = useRef(false);
   const victoryPlayedRef = useRef(false);
@@ -137,6 +156,48 @@ export default function HomePage() {
     textarea.style.height = "auto";
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
   }, [input]);
+
+  // 页面加载时从 localStorage 恢复上一次的会话 ID
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(CONVERSATION_STORAGE_KEY);
+      if (stored) {
+        conversationIdRef.current = stored;
+        setConversationId(stored);
+      }
+    } catch {
+      /* 浏览器禁用 localStorage 时静默忽略 */
+    }
+  }, []);
+
+  function rememberConversationId(id?: string) {
+    if (!id || id === conversationIdRef.current) return;
+
+    conversationIdRef.current = id;
+    setConversationId(id);
+    try {
+      window.localStorage.setItem(CONVERSATION_STORAGE_KEY, id);
+    } catch {
+      /* 浏览器禁用 localStorage 时静默忽略 */
+    }
+  }
+
+  function startNewConversation() {
+    conversationIdRef.current = "";
+    setConversationId("");
+    try {
+      window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+    } catch {
+      /* 浏览器禁用 localStorage 时静默忽略 */
+    }
+
+    victoryPlayedRef.current = false;
+    setShowConfetti(false);
+    setInput("");
+    setMessages([
+      { id: makeId(), role: "assistant", content: WELCOME_MESSAGE },
+    ]);
+  }
 
   function unlockAudio() {
     const audio = audioRef.current;
@@ -225,7 +286,7 @@ export default function HomePage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, conversation_id: "" }),
+        body: JSON.stringify({ query, conversationId }),
       });
 
       if (!response.ok || !response.body) {
@@ -250,6 +311,12 @@ export default function HomePage() {
           const chunk = parseDifyAnswerChunk(line);
           if (!chunk) continue;
 
+          if (chunk.conversationId) {
+            rememberConversationId(chunk.conversationId);
+          }
+
+          if (!chunk.text) continue;
+
           fullText = mergeStreamText(fullText, chunk.text, chunk.replace);
           setMessages((prev) =>
             prev.map((message) =>
@@ -267,16 +334,22 @@ export default function HomePage() {
 
       const lastChunk = parseDifyAnswerChunk(buffer);
       if (lastChunk) {
-        fullText = mergeStreamText(fullText, lastChunk.text, lastChunk.replace);
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === assistantId
-              ? { ...message, content: fullText }
-              : message
-          )
-        );
-        if (containsVictory(fullText)) {
-          triggerVictory();
+        if (lastChunk.conversationId) {
+          rememberConversationId(lastChunk.conversationId);
+        }
+
+        if (lastChunk.text) {
+          fullText = mergeStreamText(fullText, lastChunk.text, lastChunk.replace);
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === assistantId
+                ? { ...message, content: fullText }
+                : message
+            )
+          );
+          if (containsVictory(fullText)) {
+            triggerVictory();
+          }
         }
       }
 
@@ -337,9 +410,25 @@ export default function HomePage() {
         </div>
       )}
 
-      <header className="border-b border-sky-100 bg-white/80 px-4 py-4 text-center shadow-sm">
-        <h1 className="text-3xl font-extrabold text-sky-600">言知Q-Know</h1>
-        <p className="mt-1 text-lg text-sky-500">问我任何问题，我们一起玩</p>
+      <header className="border-b border-sky-100 bg-white/80 px-4 py-4 shadow-sm">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-extrabold text-sky-600 sm:text-3xl">
+              言知Q-Know
+            </h1>
+            <p className="mt-1 text-base text-sky-500 sm:text-lg">
+              问我任何问题，我们一起玩
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={startNewConversation}
+            disabled={isSending}
+            className="shrink-0 whitespace-nowrap rounded-full border border-sky-200 bg-white px-3 py-1.5 text-sm font-bold text-sky-600 shadow-sm transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            开启新对话
+          </button>
+        </div>
       </header>
 
       <div
